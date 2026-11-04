@@ -1,0 +1,36 @@
+{
+  "appId": "com.officetask.widget",
+  "productName": "OfficeTask",
+  "copyright": "Copyright © 2026 OfficeTask",
+  "directories": {
+    "output": "dist",
+    "buildResources": "assets"
+  },
+  "files": [
+    "src/**/*",
+    "assets/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "assets/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "OfficeTask Widget",
+    "installerIcon": "assets/icon.ico",
+    "uninstallerIcon": "assets/icon.ico",
+    "uninstallDisplayName": "OfficeTask Widget",
+    "runAfterFinish": true
+  }
+}

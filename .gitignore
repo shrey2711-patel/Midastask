@@ -1,0 +1,8 @@
+node_modules/
+desktop-widget/node_modules/
+server/node_modules/
+desktop-widget/dist/
+.env
+server/.env
+.DS_Store
+Thumbs.db

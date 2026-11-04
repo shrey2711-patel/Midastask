@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OfficeTask Widget</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="widget-body">
+  <div class="widget-container" id="widgetContainer">
+    
+    <!-- Top Header Bar -->
+    <header class="widget-header" id="widgetHeader">
+      <div class="header-left">
+        <div class="status-indicator-dot" id="statusDot" title="Connecting..."></div>
+        <div class="device-info">
+          <span class="device-tag" id="deviceTag">OFFICE-PC-01</span>
+          <span class="sync-caption" id="syncCaption">Connecting...</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Unlocked Admin Actions (Only visible when authenticated) -->
+        <div class="unlocked-controls" id="unlockedControls" style="display: none;">
+          <button class="icon-btn" id="settingsBtn" title="Device Settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <button class="icon-btn danger" id="closeBtn" title="Close Widget (Admin)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <!-- Lock / Unlock Trigger Button -->
+        <button class="lock-btn" id="lockToggleBtn" title="Administrator Security Lock">
+          <svg id="lockIconLocked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <svg id="lockIconUnlocked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+          <span class="lock-label" id="lockLabel">Locked</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Draggable Bar Hint when Unlocked -->
+    <div class="drag-handle-bar" id="dragHandleBar" style="display: none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+      <span>Unlocked: Click & Drag here to reposition</span>
+    </div>
+
+    <!-- Filter Tabs -->
+    <nav class="filter-tabs">
+      <button class="tab-btn active" data-filter="today">
+        Today <span class="tab-count" id="countToday">0</span>
+      </button>
+      <button class="tab-btn" data-filter="pending">
+        Pending <span class="tab-count" id="countPending">0</span>
+      </button>
+      <button class="tab-btn" data-filter="completed">
+        Done <span class="tab-count" id="countCompleted">0</span>
+      </button>
+    </nav>
+
+    <!-- Task List Container -->
+    <main class="task-list-wrapper">
+      <div class="task-list" id="taskList">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <p class="empty-title">All tasks cleared</p>
+        <p class="empty-subtitle">Waiting for admin assignments</p>
+      </div>
+    </main>
+
+    <!-- Bottom Progress & Sync Bar -->
+    <footer class="widget-footer">
+      <div class="footer-progress">
+        <div class="progress-info">
+          <span id="progressSummary">0/0 completed</span>
+          <span id="queueNotice" class="queue-notice" style="display: none;">1 offline change</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Admin Password Authentication Modal -->
+    <div class="modal-overlay" id="authModal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <div class="modal-icon-shield">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3>Administrator Unlock</h3>
+          </div>
+          <button class="modal-close-btn" id="authModalClose">&times;</button>
+        </div>
+        <p class="modal-desc">Enter office administrator password to unlock widget repositioning, settings, and controls.</p>
+        
+        <form id="authForm">
+          <div class="input-group">
+            <input type="password" id="adminPasswordInput" placeholder="Enter admin password" autocomplete="off" required>
+          </div>
+          <div class="modal-error" id="authError" style="display: none;"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="authCancelBtn">Cancel</button>
+            <button type="submit" class="btn-primary" id="authSubmitBtn">Unlock Widget</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Admin Settings Modal (Only accessible when unlocked) -->
+    <div class="modal-overlay" id="settingsModal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Device Configuration</h3>
+          <button class="modal-close-btn" id="settingsModalClose">&times;</button>
+        </div>
+        <form id="settingsForm">
+          <div class="form-group">
+            <label>Assigned Device ID</label>
+            <select id="configDeviceId">
+              <option value="OFFICE-PC-01">OFFICE-PC-01 (Laptop 1)</option>
+              <option value="OFFICE-PC-02">OFFICE-PC-02 (Laptop 2)</option>
+              <option value="OFFICE-PC-03">OFFICE-PC-03 (Laptop 3)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Office Server URL</label>
+            <input type="url" id="configServerUrl" placeholder="http://localhost:5555" required>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="settingsCancelBtn">Close</button>
+            <button type="submit" class="btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
