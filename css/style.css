@@ -1,0 +1,472 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --primary-black: #000000;
+  --secondary-gray: #71717A;
+  --input-bg: #EAEAEA;
+  --button-dark: #474747;
+  --button-dark-hover: #323232;
+  --history-blue: #2A7BE4;
+  --card-bg: #FFFFFF;
+  --card-border: #EEEEEE;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #FFFFFF;
+  color: #111111;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================================
+   RGB STATUS / PERFORMANCE SYSTEM (SOLID FLAT COLOR ONLY)
+   Solid RGB Circle Dot (No Black - Solid Green / Yellow / Red)
+   🟢 Solid Green = Working Good (Active & On Schedule)
+   🟡 Solid Amber/Yellow = Stuck in one task (>30m threshold)
+   🔴 Solid Red   = PC Off / Inactive (No heartbeat)
+   ======================================================== */
+.rgb-status-badge {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 20px;
+  cursor: default;
+  user-select: none;
+  transition: background-color 0.25s ease;
+  outline: none;
+  flex-shrink: 0;
+  z-index: 2;
+  border: none;
+  box-shadow: none; /* Solid color only - no neon glow */
+}
+
+/* 🟢 SOLID GREEN BADGE: Working Good */
+.rgb-status-badge.rgb-green {
+  background-color: #10B981;
+  color: #FFFFFF;
+  border: none;
+  box-shadow: none;
+}
+
+/* 🟡 SOLID AMBER/YELLOW BADGE: Stuck in one task */
+.rgb-status-badge.rgb-yellow {
+  background-color: #F59E0B;
+  color: #FFFFFF;
+  border: none;
+  box-shadow: none;
+}
+
+/* 🔴 SOLID RED BADGE: PC Off / Inactive */
+.rgb-status-badge.rgb-red {
+  background-color: #EF4444;
+  color: #FFFFFF;
+  border: none;
+  box-shadow: none;
+}
+
+/* Solid RGB Top Line for Card (Clean flat bar, no glow, no shadow, rectangular) */
+.card-rgb-line {
+  height: 4px;
+  width: 100%;
+  border-radius: 0px;
+  margin-bottom: 16px;
+  transition: background-color 0.25s ease;
+  box-shadow: none;
+}
+
+.card-rgb-line.line-green {
+  background-color: #10B981;
+  box-shadow: none;
+}
+
+.card-rgb-line.line-yellow {
+  background-color: #F59E0B;
+  box-shadow: none;
+}
+
+.card-rgb-line.line-red {
+  background-color: #EF4444;
+  box-shadow: none;
+}
+
+/* Highlight for task detected as stuck (Clean solid border & soft tint) */
+.task-stuck-highlight {
+  border-color: #F59E0B !important;
+  background-color: #FFFBEB !important;
+  box-shadow: none !important;
+}
+
+/* Status Pill Indicator */
+.status-pill {
+  user-select: none;
+  cursor: default;
+}
+.status-pill-clickable:hover {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+}
+
+/* ========================================================
+   1. HISTORY TOGGLE SWITCH (PHYSICS-BASED SMOOTH ANIMATION)
+   ======================================================== */
+.history-toggle-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 96px;
+  height: 36px;
+  border-radius: 9999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  background-color: var(--history-blue);
+  box-shadow: 0 4px 14px rgba(42, 123, 228, 0.35);
+  transition: background-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.28s ease,
+              transform 0.15s ease;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.history-toggle-pill:active {
+  transform: scale(0.95);
+}
+
+.history-toggle-pill.inactive {
+  background-color: #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.history-toggle-knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  background-color: #FFFFFF;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Active State: knob slides to the right */
+.history-toggle-pill.active .history-toggle-knob,
+.history-toggle-pill:not(.inactive) .history-toggle-knob {
+  transform: translateX(60px);
+}
+
+/* Inactive State: knob stays at origin (left) */
+.history-toggle-pill.inactive .history-toggle-knob {
+  transform: translateX(0px);
+}
+
+.history-toggle-label {
+  position: absolute;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), color 0.28s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Active: label stays on the left in white */
+.history-toggle-pill.active .history-toggle-label,
+.history-toggle-pill:not(.inactive) .history-toggle-label {
+  left: 14px;
+  right: auto;
+  color: #FFFFFF;
+  transform: translateX(0);
+}
+
+/* Inactive: label shifts to the right in subtle slate */
+.history-toggle-pill.inactive .history-toggle-label {
+  left: auto;
+  right: 14px;
+  color: #64748B;
+  transform: translateX(0);
+}
+
+/* ========================================================
+   2. TIMEFRAME DROPDOWN (SMOOTH POPUP & ROTATING CHEVRON)
+   ======================================================== */
+.dropdown-menu-animated {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.96);
+  transform-origin: top left;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.2s;
+  pointer-events: none;
+}
+
+.dropdown-menu-animated.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.dropdown-item {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #F8FAFC;
+}
+
+.dropdown-item.active {
+  background-color: #EFF6FF;
+  color: #1D4ED8;
+  font-weight: 600;
+}
+
+.dropdown-item.active .dropdown-check {
+  display: inline-block !important;
+}
+
+/* Chevron rotation */
+.chevron-rotate {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chevron-rotate.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* ========================================================
+   3. CHECKBOX POP ANIMATION & TASK STRIKE-THROUGH
+   ======================================================== */
+.custom-task-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #9CA3AF;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background-color: #FFFFFF;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+.custom-task-checkbox:hover {
+  border-color: #111111;
+  transform: scale(1.08);
+}
+
+.custom-task-checkbox:active {
+  transform: scale(0.85);
+}
+
+.custom-task-checkbox:checked {
+  background-color: #000000;
+  border-color: #000000;
+  animation: checkboxPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkboxPop {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.custom-task-checkbox:checked::before {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  transform: rotate(-45deg) translate(1px, -1px);
+  animation: checkmarkIn 0.2s ease-out forwards;
+}
+
+@keyframes checkmarkIn {
+  from { opacity: 0; transform: rotate(-45deg) translate(1px, -1px) scale(0.5); }
+  to { opacity: 1; transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+}
+
+/* Strike-through with smooth transition */
+.task-completed-text {
+  text-decoration: line-through;
+  color: #9CA3AF;
+  transition: color 0.25s ease, text-decoration 0.25s ease;
+}
+
+/* ========================================================
+   4. LAPTOP WORKSTATION TABS (3 LAPTOPS + ALL VIEW)
+   ======================================================== */
+.laptop-tab-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748B;
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.laptop-tab-pill:hover {
+  background-color: #F1F5F9;
+  color: #0F172A;
+  border-color: #CBD5E1;
+}
+
+.laptop-tab-pill:active {
+  transform: scale(0.96);
+}
+
+.laptop-tab-pill.active {
+  background-color: #000000;
+  color: #FFFFFF;
+  border-color: #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.laptop-tab-pill.active .tab-sublabel {
+  color: #94A3B8;
+}
+
+.laptop-card-wrapper {
+  border-radius: 0px !important;
+  box-shadow: none !important;
+  border: none !important;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.laptop-card-wrapper:hover {
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.laptop-card-wrapper.tab-hidden {
+  display: none !important;
+}
+
+/* ========================================================
+   5. FIXED SIZE TASK CONTAINER & AESTHETIC SCROLLBAR
+   ======================================================== */
+.task-list-fixed-container {
+  height: 330px;
+  max-height: 330px;
+  min-height: 330px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
+  overscroll-behavior: contain;
+}
+
+/* Aesthetic Glass Scrollbar */
+.aesthetic-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.aesthetic-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.aesthetic-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+  margin: 4px 0;
+}
+
+.aesthetic-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #E2E8F0;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.aesthetic-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: #CBD5E1;
+}
+
+.aesthetic-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94A3B8;
+}
+
+/* Legacy & helper scrollbars */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #CBD5E1;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Refresh animation */
+.notes-container-animated {
+  animation: cardFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardFadeIn {
+  0% {
+    opacity: 0.2;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

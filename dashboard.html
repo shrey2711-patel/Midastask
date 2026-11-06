@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Midas Task Management – Dashboard</title>
+  
+  <!-- PWA & Apple iOS Badging Meta Tags -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MidasTask">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#45474E',
+            inputBg: '#EBEBEB',
+            historyBlue: '#2A7BE4',
+            cardBg: '#FFFFFF',
+            cardBorder: '#EEEEEE'
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-white min-h-screen flex flex-col justify-between selection:bg-black selection:text-white">
+
+  <!-- Main View Container (Auto-scales from mobile portrait to wide laptop desktop) -->
+  <main id="mainContentContainer" class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 transition-all duration-300 flex-1 flex flex-col justify-start">
+    
+    <!-- Top Header & Filter Controls Row (Matches Mobile PDF & Laptop PDF) -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between items-center gap-6 mb-6 sm:mb-8 lg:mb-12">
+      
+      <!-- Logo Heading: "MIDAS TASK" / "MANAGEMENT" on two stacked lines (Centered on mobile, left on desktop) -->
+      <div class="text-center lg:text-left">
+        <h1 class="text-4xl sm:text-5xl lg:text-5xl font-black text-black tracking-tight leading-[1.08] uppercase">
+          MIDAS TASK<br>MANAGEMENT
+        </h1>
+      </div>
+
+      <!-- Controls Row: "This Month" Dropdown + "history" Blue Toggle Switch -->
+      <div class="flex items-center justify-between w-full max-w-md lg:max-w-none lg:w-auto px-1 sm:px-2 lg:px-0 gap-4">
+        
+        <!-- Filter Dropdown: "This Month" with animated chevron -->
+        <div class="relative">
+          <button 
+            type="button" 
+            id="timeframeDropdownTrigger"
+            class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 active:scale-95 text-gray-700 border border-gray-200/90 rounded-full text-xs sm:text-sm font-medium shadow-xs transition-all cursor-pointer"
+            aria-expanded="false"
+            aria-haspopup="true"
+          >
+            <span id="timeframeCurrentLabel">This Month</span>
+            <svg id="timeframeChevron" class="w-4 h-4 text-gray-500 chevron-rotate" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <!-- Dropdown Menu with smooth popup animation & checkmarks -->
+          <div 
+            id="timeframeDropdownMenu" 
+            class="dropdown-menu-animated absolute left-0 sm:left-auto sm:right-0 mt-2 w-44 bg-white border border-gray-100/90 rounded-2xl shadow-xl py-2 z-50 text-xs font-medium"
+          >
+            <button class="dropdown-item w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 text-gray-700" data-value="Today">
+              <span>Today</span>
+              <span class="dropdown-check hidden text-blue-600 font-bold">✓</span>
+            </button>
+            <button class="dropdown-item w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 text-gray-700" data-value="This Week">
+              <span>This Week</span>
+              <span class="dropdown-check hidden text-blue-600 font-bold">✓</span>
+            </button>
+            <button class="dropdown-item w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 text-gray-700 active" data-value="This Month">
+              <span>This Month</span>
+              <span class="dropdown-check text-blue-600 font-bold">✓</span>
+            </button>
+            <button class="dropdown-item w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 text-gray-700" data-value="All Time">
+              <span>All Time</span>
+              <span class="dropdown-check hidden text-blue-600 font-bold">✓</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- History Toggle Switch (Blue pill with white knob & text 'history') -->
+        <button 
+          type="button"
+          id="historyToggle" 
+          class="history-toggle-pill active" 
+          title="Toggle History Archive Mode"
+          aria-pressed="true"
+        >
+          <span class="history-toggle-knob"></span>
+          <span class="history-toggle-label">history</span>
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- Three Active User / Workstation Cards (Responsive Grid: 1 col on mobile, 2 on tablet, 3 on laptop) -->
+    <div id="workstationCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 flex-1 items-start w-full max-w-md md:max-w-none mx-auto transition-all duration-300">
+
+      <!-- ==================== CARD 1: OFFICE-PC-01 ==================== -->
+      <section id="laptop-card-OFFICE-PC-01" class="laptop-card-wrapper bg-white border-none rounded-none p-5 sm:p-7 shadow-none transition-all flex flex-col justify-between min-h-[490px]">
+        
+        <div>
+          <!-- Luminous RGB Glowing Top Accent Line -->
+          <div id="card-rgb-line-OFFICE-PC-01" class="card-rgb-line line-green"></div>
+
+          <!-- Card Top: "Active Users" & RGB Light Indicator -->
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <p class="text-xl sm:text-2xl font-normal text-gray-700 tracking-tight">Active Users</p>
+              <p class="text-xs font-bold text-gray-900 tracking-wider uppercase mt-1">MAIN HP LAPTOP</p>
+              <p class="text-[11px] text-gray-400">Main HP Laptop &bull; Workstation 1</p>
+              <div id="perf-tag-OFFICE-PC-01" class="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 status-pill">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Working Good</span>
+              </div>
+            </div>
+            <!-- RGB Status Light: 1 -->
+            <div 
+              id="rgb-badge-OFFICE-PC-01" 
+              class="rgb-status-badge rgb-green" 
+              title="Main HP Laptop • Status Indicator"
+            >
+              1
+            </div>
+          </div>
+
+          <!-- Card Header Title: "notes list" & "with checkbox" -->
+          <div class="mt-3 mb-3">
+            <div class="flex items-baseline justify-between">
+              <h2 class="text-3xl sm:text-4xl font-black text-black tracking-tight lowercase">
+                notes list
+              </h2>
+              <span id="notes-count-OFFICE-PC-01" class="text-xs font-semibold text-gray-400">0/0</span>
+            </div>
+            <p id="card-subtitle-OFFICE-PC-01" class="text-sm sm:text-base font-normal text-gray-500 mt-0.5">
+              with checkbox
+            </p>
+          </div>
+
+          <!-- Fixed-Size Notes List Container with Aesthetic Scrollbar -->
+          <div id="notes-list-OFFICE-PC-01" class="task-list-fixed-container aesthetic-scrollbar space-y-2.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="pt-4 mt-4 border-t border-gray-100/80 flex items-center justify-between">
+          <button onclick="TaskManager.openCreateModal('OFFICE-PC-01')" class="text-xs font-medium text-gray-600 hover:text-black flex items-center gap-1.5 transition-colors py-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>Add to list</span>
+          </button>
+          <div class="flex items-center gap-2.5">
+            <a href="client.html?device=OFFICE-PC-01" target="_blank" class="text-[11px] text-gray-400 hover:text-black transition-colors font-medium" title="Open dedicated client widget/checklist">Client View &nearr;</a>
+            <span id="footer-status-OFFICE-PC-01" class="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>Online</span>
+            </span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ==================== CARD 2: OFFICE-PC-02 ==================== -->
+      <section id="laptop-card-OFFICE-PC-02" class="laptop-card-wrapper bg-white border-none rounded-none p-5 sm:p-7 shadow-none transition-all flex flex-col justify-between min-h-[490px]">
+        
+        <div>
+          <!-- Luminous RGB Glowing Top Accent Line -->
+          <div id="card-rgb-line-OFFICE-PC-02" class="card-rgb-line line-yellow"></div>
+
+          <!-- Card Top: "Active Users" & RGB Light Indicator -->
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <p class="text-xl sm:text-2xl font-normal text-gray-700 tracking-tight">Active Users</p>
+              <p class="text-xs font-bold text-gray-900 tracking-wider uppercase mt-1">GREY LAPTOP</p>
+              <p class="text-[11px] text-gray-400">Grey Laptop &bull; Workstation 2</p>
+              <div id="perf-tag-OFFICE-PC-02" class="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60 status-pill">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                <span>Stuck in 1 task (45m+)</span>
+              </div>
+            </div>
+            <!-- RGB Status Light: 2 -->
+            <div 
+              id="rgb-badge-OFFICE-PC-02" 
+              class="rgb-status-badge rgb-yellow" 
+              title="Grey Laptop • Status Indicator"
+            >
+              2
+            </div>
+          </div>
+
+          <!-- Card Header Title: "notes list" & "with checkbox" -->
+          <div class="mt-3 mb-3">
+            <div class="flex items-baseline justify-between">
+              <h2 class="text-3xl sm:text-4xl font-black text-black tracking-tight lowercase">
+                notes list
+              </h2>
+              <span id="notes-count-OFFICE-PC-02" class="text-xs font-semibold text-gray-400">0/0</span>
+            </div>
+            <p id="card-subtitle-OFFICE-PC-02" class="text-sm sm:text-base font-normal text-gray-500 mt-0.5">
+              with checkbox
+            </p>
+          </div>
+
+          <!-- Fixed-Size Notes List Container with Aesthetic Scrollbar -->
+          <div id="notes-list-OFFICE-PC-02" class="task-list-fixed-container aesthetic-scrollbar space-y-2.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="pt-4 mt-4 border-t border-gray-100/80 flex items-center justify-between">
+          <button onclick="TaskManager.openCreateModal('OFFICE-PC-02')" class="text-xs font-medium text-gray-600 hover:text-black flex items-center gap-1.5 transition-colors py-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>Add to list</span>
+          </button>
+          <div class="flex items-center gap-2.5">
+            <a href="client.html?device=OFFICE-PC-02" target="_blank" class="text-[11px] text-gray-400 hover:text-black transition-colors font-medium" title="Open dedicated client widget/checklist">Client View &nearr;</a>
+            <span id="footer-status-OFFICE-PC-02" class="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span>Stuck (Warning)</span>
+            </span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ==================== CARD 3: OFFICE-PC-03 ==================== -->
+      <section id="laptop-card-OFFICE-PC-03" class="laptop-card-wrapper bg-white border-none rounded-none p-5 sm:p-7 shadow-none transition-all flex flex-col justify-between min-h-[490px]">
+        
+        <div>
+          <!-- Luminous RGB Glowing Top Accent Line -->
+          <div id="card-rgb-line-OFFICE-PC-03" class="card-rgb-line line-red"></div>
+
+          <!-- Card Top: "Active Users" & RGB Light Indicator -->
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <p class="text-xl sm:text-2xl font-normal text-gray-700 tracking-tight">Active Users</p>
+              <p class="text-xs font-bold text-gray-900 tracking-wider uppercase mt-1">GHANSHYAM'S LAPTOP</p>
+              <p class="text-[11px] text-gray-400">Ghanshyam's Laptop &bull; Workstation 3</p>
+              <div id="perf-tag-OFFICE-PC-03" class="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60 status-pill">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                <span>PC Powered Off</span>
+              </div>
+            </div>
+            <!-- RGB Status Light: 3 -->
+            <div 
+              id="rgb-badge-OFFICE-PC-03" 
+              class="rgb-status-badge rgb-red" 
+              title="Ghanshyam's Laptop • Status Indicator"
+            >
+              3
+            </div>
+          </div>
+
+          <!-- Card Header Title: "notes list" & "with checkbox" -->
+          <div class="mt-3 mb-3">
+            <div class="flex items-baseline justify-between">
+              <h2 class="text-3xl sm:text-4xl font-black text-black tracking-tight lowercase">
+                notes list
+              </h2>
+              <span id="notes-count-OFFICE-PC-03" class="text-xs font-semibold text-gray-400">0/0</span>
+            </div>
+            <p id="card-subtitle-OFFICE-PC-03" class="text-sm sm:text-base font-normal text-gray-500 mt-0.5">
+              with checkbox
+            </p>
+          </div>
+
+          <!-- Fixed-Size Notes List Container with Aesthetic Scrollbar -->
+          <div id="notes-list-OFFICE-PC-03" class="task-list-fixed-container aesthetic-scrollbar space-y-2.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="pt-4 mt-4 border-t border-gray-100/80 flex items-center justify-between">
+          <button onclick="TaskManager.openCreateModal('OFFICE-PC-03')" class="text-xs font-medium text-gray-600 hover:text-black flex items-center gap-1.5 transition-colors py-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>Add to list</span>
+          </button>
+          <div class="flex items-center gap-2.5">
+            <a href="client.html?device=OFFICE-PC-03" target="_blank" class="text-[11px] text-gray-400 hover:text-black transition-colors font-medium" title="Open dedicated client widget/checklist">Client View &nearr;</a>
+            <span id="footer-status-OFFICE-PC-03" class="inline-flex items-center gap-1.5 text-[11px] font-medium text-rose-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+              <span>PC Offline</span>
+            </span>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Mobile Floating Action Button (FAB) for touch-friendly creation -->
+  <button 
+    onclick="TaskManager.openCreateModal()" 
+    class="sm:hidden fixed bottom-6 right-6 w-14 h-14 bg-black text-white rounded-full shadow-2xl flex items-center justify-center active:scale-95 transition-transform z-30"
+    title="Create Note"
+  >
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+  </button>
+
+  <!-- ==================== MODAL: ADD / EDIT NOTE ==================== -->
+  <div id="taskModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-50 items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-fade-in max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="taskModalTitle" class="text-lg font-bold text-gray-900">Add Note to Task List</h3>
+        <button id="closeModalBtn" class="text-gray-400 hover:text-black text-2xl p-1 leading-none">&times;</button>
+      </div>
+
+      <form id="taskModalForm" class="space-y-4">
+        <input type="hidden" id="modalNoteId">
+
+        <!-- Target Workstation -->
+        <div>
+          <label for="modalDeviceSelect" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
+            Assign to Workstation
+          </label>
+          <select id="modalDeviceSelect" class="w-full bg-[#EBEBEB] text-gray-900 text-sm rounded-xl px-3.5 py-3 outline-none border-none">
+            <option value="OFFICE-PC-01">Main HP Laptop</option>
+            <option value="OFFICE-PC-02">Grey Laptop</option>
+            <option value="OFFICE-PC-03">Ghanshyam's Laptop</option>
+          </select>
+        </div>
+
+        <!-- Note / Task Title -->
+        <div>
+          <label for="modalNoteTitle" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
+            Task Description / Note *
+          </label>
+          <input 
+            type="text" 
+            id="modalNoteTitle" 
+            required 
+            placeholder="e.g. Verify morning payment batch" 
+            class="w-full bg-[#EBEBEB] text-gray-900 text-sm rounded-xl px-3.5 py-3 outline-none border-none"
+          >
+        </div>
+
+        <!-- Category & Priority Row -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="modalNoteCategory" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
+              Category
+            </label>
+            <input 
+              type="text" 
+              id="modalNoteCategory" 
+              placeholder="e.g. Audit, Dev" 
+              class="w-full bg-[#EBEBEB] text-gray-900 text-sm rounded-xl px-3.5 py-3 outline-none border-none"
+            >
+          </div>
+
+          <div>
+            <label for="modalNotePriority" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
+              Priority
+            </label>
+            <select id="modalNotePriority" class="w-full bg-[#EBEBEB] text-gray-900 text-sm rounded-xl px-3.5 py-3 outline-none border-none">
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="pt-3 flex justify-end gap-2.5">
+          <button 
+            type="button" 
+            id="cancelModalBtn" 
+            class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors min-h-[44px]"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            class="px-5 py-2.5 bg-[#45474E] hover:bg-black text-white text-xs font-semibold rounded-xl transition-colors shadow-sm min-h-[44px]"
+          >
+            Save Note
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="py-6 text-center text-xs text-gray-400 flex items-center justify-center gap-3 border-t border-gray-50">
+    <span>MIDAS TASK MANAGEMENT &bull; 3 Active Office Laptops</span>
+    <span class="text-gray-300">&bull;</span>
+    <button onclick="Auth.logout()" class="hover:text-black transition-colors underline cursor-pointer">Sign out</button>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="data/mock-data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('[PWA] Service Worker active, Red Badging enabled.'))
+          .catch(err => console.log('[PWA] Service Worker registration:', err));
+      });
+    }
+  </script>
+</body>
+</html>

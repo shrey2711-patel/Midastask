@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Midas Task Management – Login</title>
+  
+  <!-- PWA & Apple iOS Badging Meta Tags -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MidasTask">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#45474E',
+            brandDarkHover: '#32343A',
+            inputBg: '#EBEBEB',
+            historyBlue: '#2A7BE4'
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-white min-h-screen flex flex-col justify-between selection:bg-black selection:text-white">
+
+  <!-- Main Login Container (Matches Mobile PDF & Laptop PDF) -->
+  <main class="flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16">
+    
+    <!-- Big Header Title (2 stacked lines on mobile, prominent and centered) -->
+    <div class="text-center mb-12 sm:mb-16">
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-black text-black tracking-tight leading-[1.08] uppercase">
+        MIDAS TASK<br>MANAGEMENT
+      </h1>
+    </div>
+
+    <!-- Center Login Box -->
+    <div class="w-full max-w-[340px] sm:max-w-[380px] flex flex-col items-center">
+      
+      <!-- Sub-headings -->
+      <h2 class="text-3xl sm:text-4xl font-medium text-[#5E6472] text-center tracking-tight">
+        Login
+      </h2>
+      <p class="text-sm sm:text-base text-[#9CA3AF] text-center mt-1 mb-8">
+        Sign in to continue
+      </p>
+
+      <!-- Error Alert Container -->
+      <div id="errorAlert" class="hidden w-full mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl text-center"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="w-full space-y-4 sm:space-y-5">
+        
+        <!-- EMAIL Field -->
+        <div>
+          <label for="emailInput" class="block text-[11px] font-semibold text-[#8B909A] tracking-wider uppercase mb-1.5 pl-0.5">
+            EMAIL
+          </label>
+          <input 
+            type="email" 
+            id="emailInput" 
+            name="email" 
+            value="hello@reallygreatsite.com"
+            placeholder="hello@reallygreatsite.com" 
+            required 
+            autocomplete="email"
+            class="w-full bg-[#EBEBEB] text-gray-900 placeholder-[#9CA3AF] text-sm sm:text-base rounded-xl px-4 py-3 sm:py-3.5 outline-none focus:ring-2 focus:ring-gray-400 focus:bg-[#E2E2E2] transition-all border-none"
+          >
+        </div>
+
+        <!-- PASSWORD Field -->
+        <div>
+          <label for="passwordInput" class="block text-[11px] font-semibold text-[#8B909A] tracking-wider uppercase mb-1.5 pl-0.5">
+            PASSWORD
+          </label>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="passwordInput" 
+              name="password" 
+              value="******"
+              placeholder="******" 
+              required 
+              autocomplete="current-password"
+              class="w-full bg-[#EBEBEB] text-gray-900 placeholder-[#9CA3AF] text-sm sm:text-base rounded-xl px-4 py-3 sm:py-3.5 pr-10 outline-none focus:ring-2 focus:ring-gray-400 focus:bg-[#E2E2E2] transition-all border-none font-mono tracking-widest"
+            >
+            <button 
+              type="button" 
+              id="togglePasswordBtn" 
+              class="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
+              title="Toggle password visibility"
+            >
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit Button (Matches the exact dark gray pill button in Mobile PDF & Laptop PDF) -->
+        <div class="pt-4 flex justify-center">
+          <button 
+            type="submit" 
+            id="submitBtn"
+            class="w-36 sm:w-40 py-2.5 sm:py-3 px-6 bg-[#484848] hover:bg-[#343434] active:scale-95 text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer min-h-[46px]"
+          >
+            <span>sign up</span>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Prototype Helper Notice -->
+      <div class="mt-8 text-center text-xs text-gray-400">
+        <p>Mock login prefilled with PDF sample credentials</p>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-4 text-center text-xs text-gray-400 border-t border-gray-50">
+    <span>MIDAS TASK MANAGEMENT &bull; Mobile & Desktop UI/UX Prototype</span>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="data/mock-data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

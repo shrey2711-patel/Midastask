@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Midas Notes – Workstation Client</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MidasTasks">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#45474E',
+            inputBg: '#EBEBEB',
+            historyBlue: '#2A7BE4'
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-white min-h-screen flex flex-col justify-between selection:bg-black selection:text-white">
+
+  <!-- Main Client Container (Compact for Desktop Widget or Fullscreen on Phone) -->
+  <main class="w-full max-w-md mx-auto px-5 py-6 sm:py-8 flex-1 flex flex-col justify-start">
+
+    <!-- Header: "MIDAS TASK" / "MANAGEMENT" on two stacked lines (Matches PDF exactly) -->
+    <div class="text-center mb-6">
+      <h1 class="text-3xl sm:text-4xl font-black text-black tracking-tight leading-[1.08] uppercase">
+        MIDAS TASK<br>MANAGEMENT
+      </h1>
+      <p class="text-[11px] text-gray-400 mt-1 uppercase tracking-wider font-semibold">
+        Client Workstation Checklist
+      </p>
+    </div>
+
+    <!-- The Dedicated Client Card (Clean flat rectangle, no border, no shadow) -->
+    <div class="bg-white border-none rounded-none p-6 sm:p-7 shadow-none flex flex-col justify-between flex-1">
+
+      <div>
+        <!-- Luminous RGB Glowing Top Accent Line -->
+        <div id="clientCardRgbLine" class="card-rgb-line line-green"></div>
+
+        <!-- Card Top: "Active Users" & Black Circle Indicator -->
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <p class="text-xl font-normal text-gray-700 tracking-tight">Active Users</p>
+            <div class="flex items-center gap-2 mt-1">
+              <!-- Workstation Switcher Dropdown (Allows testing PC-01, PC-02, PC-03) -->
+              <select 
+                id="deviceSelectPill" 
+                class="text-xs font-bold text-gray-900 uppercase tracking-wider bg-gray-100 hover:bg-gray-200 border-none rounded-lg px-2.5 py-1 outline-none cursor-pointer"
+                title="Select Workstation Client"
+              >
+                <option value="OFFICE-PC-01">Main HP Laptop</option>
+                <option value="OFFICE-PC-02">Grey Laptop</option>
+                <option value="OFFICE-PC-03">Ghanshyam's Laptop</option>
+              </select>
+            </div>
+            <p id="clientDepartment" class="text-[11px] text-gray-400 mt-0.5">Finance & Ops</p>
+          </div>
+
+          <!-- RGB Status Light Indicator (1, 2, 3) -->
+          <div id="clientCircleBadge" class="rgb-status-badge rgb-green" title="Workstation RGB Performance Light">
+            <span id="clientCircleNumber">1</span>
+          </div>
+        </div>
+
+        <!-- Card Header Title: "notes list" & "with checkbox" -->
+        <div class="mt-4 mb-4">
+          <div class="flex items-baseline justify-between">
+            <h2 class="text-3xl font-black text-black tracking-tight lowercase">
+              notes list
+            </h2>
+            <span id="clientNotesProgress" class="text-xs font-semibold text-gray-400">0/0</span>
+          </div>
+          <p class="text-sm font-normal text-gray-500 mt-0.5">
+            with checkbox
+          </p>
+        </div>
+
+        <!-- CLIENT-ONLY TO-DO CHECKLIST (CAN ONLY CHECK & UNCHECK) -->
+        <div id="clientChecklistContainer" class="task-list-fixed-container aesthetic-scrollbar space-y-3">
+          <!-- Populated dynamically via client.js -->
+        </div>
+
+      </div>
+
+      <!-- Footer Indicator (Confirms remote control by admin) -->
+      <div class="pt-4 mt-6 border-t border-gray-100/90 flex items-center justify-between text-[11px] text-gray-400">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Managed remotely by Admin</span>
+        </span>
+        <a href="dashboard.html" class="text-blue-600 hover:underline font-medium">Admin Panel &rarr;</a>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="data/mock-data.js"></script>
+  <script>
+    // Client Checklist Controller
+    let currentDevice = 'OFFICE-PC-01';
+
+    function initClient() {
+      // 1. Check URL parameters (e.g. client.html?device=OFFICE-PC-02)
+      const urlParams = new URLSearchParams(window.location.search);
+      const devParam = urlParams.get('device');
+      if (devParam && ['OFFICE-PC-01', 'OFFICE-PC-02', 'OFFICE-PC-03'].includes(devParam.toUpperCase())) {
+        currentDevice = devParam.toUpperCase();
+      }
+
+      const selectEl = document.getElementById('deviceSelectPill');
+      if (selectEl) {
+        selectEl.value = currentDevice;
+        selectEl.onchange = (e) => {
+          currentDevice = e.target.value;
+          renderClientList();
+        };
+      }
+
+      renderClientList();
+      setupLiveSync();
+
+      // Continuous auto-analysis timer on client
+      setInterval(() => {
+        renderClientList();
+      }, 4000);
+    }
+
+    function renderClientList() {
+      const container = document.getElementById('clientChecklistContainer');
+      const progressEl = document.getElementById('clientNotesProgress');
+      const deptEl = document.getElementById('clientDepartment');
+      const circleEl = document.getElementById('clientCircleNumber');
+
+      // Update Header Info
+      const devices = window.DataStore.getDevices();
+      const dev = devices.find(d => d.id === currentDevice) || devices[0];
+      if (deptEl) deptEl.textContent = `${dev.user} • ${dev.department}`;
+      if (circleEl) circleEl.textContent = currentDevice.split('-')[2] || '1';
+
+      // Auto-analyze workstation performance by time & heartbeat
+      const analysis = window.DataStore.autoAnalyzeDevice(currentDevice);
+      const color = analysis.rgbColor; // 'green', 'yellow', 'red'
+
+      // Update RGB status light on badge
+      const clientCircleBadge = document.getElementById('clientCircleBadge');
+      if (clientCircleBadge) {
+        clientCircleBadge.classList.remove('rgb-green', 'rgb-yellow', 'rgb-red');
+        clientCircleBadge.classList.add(`rgb-${color}`);
+        clientCircleBadge.setAttribute('title', `${currentDevice} • ${analysis.tagText} (${analysis.tagDetail})`);
+      }
+
+      // Update glowing top RGB line on client card
+      const clientCardRgbLine = document.getElementById('clientCardRgbLine');
+      if (clientCardRgbLine) {
+        clientCardRgbLine.classList.remove('line-green', 'line-yellow', 'line-red');
+        clientCardRgbLine.classList.add(`line-${color}`);
+      }
+
+      // Load Notes assigned to this dedicated device
+      const allNotes = window.DataStore.getNotes();
+      const clientNotes = allNotes.filter(n => n.deviceId === currentDevice);
+
+      // Update Progress
+      const doneCount = clientNotes.filter(n => n.completed).length;
+      if (progressEl) progressEl.textContent = `${doneCount}/${clientNotes.length}`;
+
+      // Update red badge for this phone client if applicable
+      if ('setAppBadge' in navigator) {
+        const pending = clientNotes.filter(n => !n.completed).length;
+        if (pending > 0) navigator.setAppBadge(pending).catch(() => {});
+        else navigator.clearAppBadge().catch(() => {});
+      }
+
+      if (clientNotes.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center text-gray-400">
+            <svg class="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <p class="text-xs font-semibold text-gray-500">All tasks completed!</p>
+            <p class="text-[11px] text-gray-400 mt-0.5">Waiting for new assignments from Admin</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Render Checklist: CLIENT ONLY HAS CHECKBOX (NO DELETE / NO EDIT)
+      container.innerHTML = clientNotes.map(note => {
+        const isStuckTask = analysis.isStuck && analysis.stuckTaskId === note.id;
+        return `
+        <div 
+          class="flex items-start gap-3 p-3.5 rounded-2xl ${isStuckTask ? 'task-stuck-highlight' : 'bg-gray-50/80 hover:bg-gray-100'} transition-all border border-gray-100/70 cursor-pointer select-none"
+          onclick="toggleClientNote('${note.id}')"
+          data-note-id="${note.id}"
+        >
+          <!-- Custom Checkbox (Only Action Allowed) -->
+          <input 
+            type="checkbox" 
+            class="custom-task-checkbox mt-0.5" 
+            ${note.completed ? 'checked' : ''} 
+            onclick="event.stopPropagation(); toggleClientNote('${note.id}')"
+            title="${note.completed ? 'Mark pending' : 'Mark done'}"
+          >
+
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-900 leading-snug break-words ${note.completed ? 'task-completed-text' : ''}">
+              ${escapeHtml(note.title)}
+            </p>
+            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span class="text-[10px] font-medium px-2 py-0.5 rounded-full ${getPriorityClass(note.priority)}">
+                ${note.priority || 'medium'}
+              </span>
+              ${note.category ? `<span class="text-[10px] text-gray-400">#${escapeHtml(note.category)}</span>` : ''}
+              ${isStuckTask ? `<span class="stuck-time-pill text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">&#x23F1; Stuck (${analysis.elapsedDuration})</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    function toggleClientNote(noteId) {
+      window.DataStore.toggleNoteCompletion(noteId);
+      renderClientList();
+    }
+
+    function getPriorityClass(priority) {
+      switch (priority) {
+        case 'urgent': return 'bg-red-50 text-red-600 border border-red-200/50';
+        case 'high': return 'bg-amber-50 text-amber-700 border border-amber-200/50';
+        case 'low': return 'bg-gray-100 text-gray-600';
+        default: return 'bg-blue-50 text-blue-700 border border-blue-200/50';
+      }
+    }
+
+    function setupLiveSync() {
+      // Listen to cross-tab updates (when Admin adds, edits, or deletes tasks)
+      if (window.DataStore && window.DataStore.syncChannel) {
+        window.DataStore.syncChannel.onmessage = () => {
+          renderClientList();
+        };
+      }
+
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'midastask_notes_list') {
+          renderClientList();
+        }
+      });
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m]));
+    }
+
+    document.addEventListener('DOMContentLoaded', initClient);
+  </script>
+</body>
+</html>
