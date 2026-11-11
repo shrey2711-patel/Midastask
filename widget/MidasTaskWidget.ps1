@@ -709,17 +709,19 @@ function Render-All {
     $tasksScroll.SuspendLayout()
     $tasksScroll.Controls.Clear()
 
+    $contentHeight = 0
     if ($mine.Count -eq 0) {
         $empty = New-Object System.Windows.Forms.Label
         $empty.Text = "All tasks completed!`nWaiting for assignments from Admin."
         $empty.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
         $empty.ForeColor = [System.Drawing.Color]::FromArgb(156, 163, 175)
         $empty.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-        $empty.SetBounds(10, 40, $tasksScroll.Width - 36, 60)
+        $empty.SetBounds(10, 18, $tasksScroll.Width - 20, 56)
         $tasksScroll.Controls.Add($empty)
+        $contentHeight = 86
     } else {
         $y = 2
-        $rowW = $tasksScroll.Width - 24
+        $rowW = $tasksScroll.Width - 22
         foreach ($item in $mine) {
             $isComp = [bool]$item["completed"]
             $isStuck = ($script:StuckTaskId -eq $item["id"] -and -not $isComp)
@@ -801,6 +803,25 @@ function Render-All {
             $tasksScroll.Controls.Add($row)
             $y += $rowH + 8
         }
+        $contentHeight = $y
+    }
+
+    # Auto-size widget height from task list size (small for 1-3 tasks, capped at screen working height vh)
+    $scrWa = [System.Windows.Forms.Screen]::FromControl($form).WorkingArea
+    $maxFormH = [Math]::Max(300, $scrWa.Height - 36)
+    $headerY = 168
+    $bottomPad = 14
+    $idealFormH = $headerY + $contentHeight + $bottomPad
+    $targetFormH = [Math]::Min($maxFormH, [Math]::Max(265, $idealFormH))
+    $targetScrollH = $targetFormH - $headerY - $bottomPad
+
+    if ($form.Height -ne $targetFormH) {
+        $form.Size = New-Object System.Drawing.Size(360, $targetFormH)
+        $tasksScroll.SetBounds(12, $headerY, $form.Width - 24, $targetScrollH)
+        if ($form.Bottom -gt ($scrWa.Bottom - 10)) {
+            $form.Top = [Math]::Max($scrWa.Top + 10, $scrWa.Bottom - $targetFormH - 12)
+        }
+        $form.Invalidate()
     }
 
     $tasksScroll.ResumeLayout()
