@@ -269,6 +269,95 @@ function Reanalyze-Status {
     }
 }
 
+# In-memory Win32 P/Invoke (zero temp DLLs on disk, compatible with Smart App Control)
+function Init-Win32Native {
+    if ($script:Win32User32) { return }
+    $ab = [AppDomain]::CurrentDomain.DefineDynamicAssembly(
+        (New-Object Reflection.AssemblyName("MidasInMemWin32")),
+        [Reflection.Emit.AssemblyBuilderAccess]::Run
+    )
+    $mb = $ab.DefineDynamicModule("Mod")
+    $tb = $mb.DefineType("User32", "Public, Abstract, Sealed")
+    $addP = {
+        param($n, $r, $p)
+        $m = $tb.DefinePInvokeMethod(
+            $n, "user32.dll", "Public, Static, PinvokeImpl",
+            [Reflection.CallingConventions]::Standard, $r, $p,
+            [Runtime.InteropServices.CallingConvention]::Winapi,
+            [Runtime.InteropServices.CharSet]::Unicode
+        )
+        $m.SetImplementationFlags([Reflection.MethodImplAttributes]::PreserveSig)
+    }
+    & $addP "FindWindowW" ([IntPtr]) @([string], [string])
+    & $addP "SetWindowPos" ([bool]) @([IntPtr], [IntPtr], [int], [int], [int], [int], [uint32])
+    & $addP "IsWindow" ([bool]) @([IntPtr])
+    if ([IntPtr]::Size -eq 8) {
+        & $addP "GetWindowLongPtrW" ([IntPtr]) @([IntPtr], [int])
+        & $addP "SetWindowLongPtrW" ([IntPtr]) @([IntPtr], [int], [IntPtr])
+    } else {
+        & $addP "GetWindowLongW" ([IntPtr]) @([IntPtr], [int])
+        & $addP "SetWindowLongW" ([IntPtr]) @([IntPtr], [int], [IntPtr])
+    }
+    $script:Win32User32 = $tb.CreateType()
+}
+
+function Get-WinLong([IntPtr]$hwnd, [int]$idx) {
+    if ([IntPtr]::Size -eq 8) { return $script:Win32User32::GetWindowLongPtrW($hwnd, $idx) }
+    return $script:Win32User32::GetWindowLongW($hwnd, $idx)
+}
+
+function Set-WinLong([IntPtr]$hwnd, [int]$idx, [IntPtr]$val) {
+    if ([IntPtr]::Size -eq 8) { return $script:Win32User32::SetWindowLongPtrW($hwnd, $idx, $val) }
+    return $script:Win32User32::SetWindowLongW($hwnd, $idx, $val)
+}
+
+function Enforce-DesktopWidgetMode([bool]$forceZOrder = $false) {
+    if (-not $form -or -not $form.IsHandleCreated) { return }
+    try {
+        Init-Win32Native
+        $hwnd = $form.Handle
+
+        # 1. Mark as ToolWindow so it never shows in Alt+Tab or Taskbar
+        $GWL_EXSTYLE = -20
+        $WS_EX_TOOLWINDOW = [int64]0x00000080
+        $WS_EX_APPWINDOW  = [int64]0x00040000
+        $curEx = (Get-WinLong $hwnd $GWL_EXSTYLE).ToInt64()
+        $nextEx = ($curEx -bor $WS_EX_TOOLWINDOW) -band (-bnot $WS_EX_APPWINDOW)
+        if ($curEx -ne $nextEx) {
+            [void](Set-WinLong $hwnd $GWL_EXSTYLE ([IntPtr]$nextEx))
+        }
+
+        # 2. Set Progman as Owner (GWLP_HWNDPARENT = -8) so Win+D / Show Desktop NEVER minimizes widget
+        $progman = $script:Win32User32::FindWindowW("Progman", $null)
+        if ($progman -ne [IntPtr]::Zero -and $script:Win32User32::IsWindow($progman)) {
+            $curOwner = Get-WinLong $hwnd -8
+            if ($curOwner -ne $progman) {
+                [void](Set-WinLong $hwnd -8 $progman)
+            }
+        }
+
+        # 3. Never allow Minimized or Hidden state on Desktop
+        if (-not $script:Exiting -and -not $form.Visible) {
+            $form.Show()
+        }
+        if ($form.WindowState -ne [System.Windows.Forms.FormWindowState]::Normal) {
+            $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+        }
+
+        # 4. Keep Z-order either AlwaysOnTop or cleanly resting on Desktop (HWND_BOTTOM)
+        $SWP_NOSIZE = [uint32]0x0001
+        $SWP_NOMOVE = [uint32]0x0002
+        $SWP_NOACTIVATE = [uint32]0x0010
+        $flags = $SWP_NOSIZE -bor $SWP_NOMOVE -bor $SWP_NOACTIVATE
+        if ($script:Config.AlwaysOnTop) {
+            [void]$script:Win32User32::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, $flags)
+        } elseif ($forceZOrder -or ([System.Windows.Forms.Form]::ActiveForm -ne $form -and -not $script:Dragging)) {
+            # Owned window at HWND_BOTTOM stays above Progman wallpaper & behind open apps
+            [void]$script:Win32User32::SetWindowPos($hwnd, [IntPtr]1, 0, 0, 0, 0, $flags)
+        }
+    } catch {}
+}
+
 # Build Main Widget Window
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Midas Task Widget"
@@ -277,6 +366,21 @@ $form.BackColor = [System.Drawing.Color]::White
 $form.Size = New-Object System.Drawing.Size(360, 540)
 $form.TopMost = [bool]$script:Config.AlwaysOnTop
 $form.ShowInTaskbar = $false
+$form.MinimizeBox = $false
+$form.MaximizeBox = $false
+
+$form.Add_HandleCreated({ Enforce-DesktopWidgetMode $true })
+$form.Add_Shown({ Enforce-DesktopWidgetMode $true })
+$form.Add_Deactivate({
+    if (-not $script:Config.AlwaysOnTop) {
+        Enforce-DesktopWidgetMode $true
+    }
+})
+$form.Add_Resize({
+    if ($form.WindowState -ne [System.Windows.Forms.FormWindowState]::Normal) {
+        $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+    }
+})
 
 $wa = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
 if ($script:Config.WindowX -ge ($wa.Left - 50) -and $script:Config.WindowX -le ($wa.Right - 60) -and
@@ -341,21 +445,9 @@ function Attach-Drag($ctrl) {
 }
 Attach-Drag $headerPanel
 
-$btnMin = New-Object System.Windows.Forms.Button
-$btnMin.Text = "-"
-$btnMin.SetBounds($form.Width - 34, 6, 26, 24)
-$btnMin.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$btnMin.FlatAppearance.BorderSize = 0
-$btnMin.BackColor = [System.Drawing.Color]::White
-$btnMin.ForeColor = [System.Drawing.Color]::FromArgb(148, 163, 184)
-$btnMin.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-$btnMin.Cursor = [System.Windows.Forms.Cursors]::Hand
-$btnMin.Add_Click({ $form.Hide() })
-$headerPanel.Controls.Add($btnMin)
-
 $btnPin = New-Object System.Windows.Forms.Button
 $btnPin.Text = if ($script:Config.AlwaysOnTop) { "PIN" } else { "pin" }
-$btnPin.SetBounds($form.Width - 70, 6, 34, 24)
+$btnPin.SetBounds($form.Width - 44, 6, 34, 24)
 $btnPin.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $btnPin.FlatAppearance.BorderSize = 0
 $btnPin.BackColor = [System.Drawing.Color]::White
@@ -366,7 +458,7 @@ $headerPanel.Controls.Add($btnPin)
 
 $btnMenu = New-Object System.Windows.Forms.Button
 $btnMenu.Text = "..."
-$btnMenu.SetBounds($form.Width - 98, 6, 26, 24)
+$btnMenu.SetBounds($form.Width - 72, 6, 26, 24)
 $btnMenu.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $btnMenu.FlatAppearance.BorderSize = 0
 $btnMenu.BackColor = [System.Drawing.Color]::White
@@ -475,6 +567,7 @@ $menuTop.Add_Click({
     $menuTop.Checked = [bool]$script:Config.AlwaysOnTop
     $btnPin.Text = if ($script:Config.AlwaysOnTop) { "PIN" } else { "pin" }
     $btnPin.ForeColor = if ($script:Config.AlwaysOnTop) { [System.Drawing.Color]::FromArgb(37, 99, 235) } else { [System.Drawing.Color]::FromArgb(148, 163, 184) }
+    Enforce-DesktopWidgetMode $true
 })
 [void]$trayMenu.Items.Add($menuTop)
 
@@ -523,7 +616,10 @@ $trayIcon = New-Object System.Windows.Forms.NotifyIcon
 $trayIcon.Visible = $true
 $trayIcon.ContextMenuStrip = $trayMenu
 $trayIcon.Add_DoubleClick({
-    if ($form.Visible) { $form.Hide() } else { $form.Show(); $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal; $form.Activate() }
+    $form.Show()
+    $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+    Enforce-DesktopWidgetMode $true
+    $form.Activate()
 })
 
 function Update-TrayIcon {
@@ -810,7 +906,7 @@ function Trigger-CloudSync {
 
 function Exit-Cleanly {
     $script:Exiting = $true
-    try { $jobTimer.Stop(); $syncTimer.Stop(); $hbTimer.Stop(); $uiTimer.Stop() } catch {}
+    try { $desktopGuardTimer.Stop(); $jobTimer.Stop(); $syncTimer.Stop(); $hbTimer.Stop(); $uiTimer.Stop() } catch {}
     Send-HeartbeatSync $script:Config.DeviceId $false
     $trayIcon.Visible = $false
     [System.Windows.Forms.Application]::Exit()
@@ -824,8 +920,10 @@ function Exit-Cleanly {
 $form.Add_FormClosing({
     param($s, $e)
     if (-not $script:Exiting -and $e.CloseReason -eq [System.Windows.Forms.CloseReason]::UserClosing) {
+        # Desktop widget stays pinned permanently until Exit Widget is chosen from tray
         $e.Cancel = $true
-        $form.Hide()
+        $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+        Enforce-DesktopWidgetMode $true
         return
     }
     $script:Exiting = $true
@@ -878,6 +976,11 @@ $uiTimer = New-Object System.Windows.Forms.Timer
 $uiTimer.Interval = 4000
 $uiTimer.Add_Tick({ Reanalyze-Status; Update-StatusVisuals })
 $uiTimer.Start()
+
+$desktopGuardTimer = New-Object System.Windows.Forms.Timer
+$desktopGuardTimer.Interval = 1200
+$desktopGuardTimer.Add_Tick({ Enforce-DesktopWidgetMode $false })
+$desktopGuardTimer.Start()
 
 Send-HeartbeatAsync $true
 Trigger-CloudSync
