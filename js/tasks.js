@@ -11,10 +11,19 @@ const TaskManager = {
 
   init() {
     this.loadState();
-    this.renderAllCards();
+    this.renderAllCards(true);
     this.setupModalEvents();
     this.setupLiveSync();
     this.startAutoAnalyzer();
+
+    // Immediately pull live state from Cloudflare cloud across any WiFi/location
+    if (window.DataStore && window.DataStore.syncFromCloud) {
+      window.DataStore.syncFromCloud('ALL');
+      if (this._cloudSyncInterval) clearInterval(this._cloudSyncInterval);
+      this._cloudSyncInterval = setInterval(() => {
+        window.DataStore.syncFromCloud('ALL');
+      }, 4000);
+    }
   },
 
   switchLaptopTab(tabId) {
@@ -61,13 +70,19 @@ const TaskManager = {
   setupLiveSync() {
     if (window.DataStore && window.DataStore.syncChannel) {
       window.DataStore.syncChannel.onmessage = () => {
-        this.renderAllCards();
+        this.renderAllCards(false);
       };
     }
 
+    if (window.DataStore && window.DataStore.onCloudSync) {
+      window.DataStore.onCloudSync(() => {
+        this.renderAllCards(false);
+      });
+    }
+
     window.addEventListener('storage', (e) => {
-      if (e.key === 'midastask_notes_list') {
-        this.renderAllCards();
+      if (e.key === 'midastask_notes_list' || e.key === 'midastask_active_users') {
+        this.renderAllCards(false);
       }
     });
   },
@@ -88,13 +103,13 @@ const TaskManager = {
   setTimeframe(filter) {
     this.activeTimeframe = filter;
     this.saveState();
-    this.renderAllCards();
+    this.renderAllCards(true);
   },
 
   toggleHistoryMode() {
     this.historyMode = !this.historyMode;
     this.saveState();
-    this.renderAllCards();
+    this.renderAllCards(true);
     return this.historyMode;
   },
 
@@ -131,10 +146,10 @@ const TaskManager = {
     });
   },
 
-  renderAllCards() {
+  renderAllCards(animate = false) {
     const devices = window.DataStore.getDevices();
     devices.forEach(device => {
-      this.renderDeviceCardNotes(device.id);
+      this.renderDeviceCardNotes(device.id, animate);
       this.updateDeviceStatusUI(device);
     });
 
@@ -247,14 +262,19 @@ const TaskManager = {
     // Disabled: Status is automated by PC connection and time logic only.
   },
 
-  renderDeviceCardNotes(deviceId) {
+  renderDeviceCardNotes(deviceId, animate = false) {
     const container = document.getElementById(`notes-list-${deviceId}`);
     if (!container) return;
 
-    // Trigger smooth refresh animation on container
-    container.classList.remove('notes-container-animated');
-    void container.offsetWidth; // Force reflow
-    container.classList.add('notes-container-animated');
+    const prevScrollTop = container.scrollTop;
+
+    if (animate) {
+      container.classList.remove('notes-container-animated');
+      void container.offsetWidth; // Force reflow
+      container.classList.add('notes-container-animated');
+    } else {
+      container.classList.remove('notes-container-animated');
+    }
 
     const notes = this.getFilteredNotesForDevice(deviceId);
     const countBadge = document.getElementById(`notes-count-${deviceId}`);
@@ -317,6 +337,7 @@ const TaskManager = {
         </div>
       </div>
     `).join('');
+    container.scrollTop = prevScrollTop;
   },
 
   getPriorityBadgeClass(priority) {

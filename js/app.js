@@ -4,9 +4,9 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Check which page we are on
-  const isLoginPage = window.location.pathname.endsWith('login.html') || document.getElementById('loginForm');
-  const isDashboardPage = window.location.pathname.endsWith('dashboard.html') || document.getElementById('dashboardContent');
+  const path = window.location.pathname.toLowerCase();
+  const isLoginPage = path.endsWith('login.html') || path.endsWith('/login') || !!document.getElementById('loginForm');
+  const isDashboardPage = path.endsWith('dashboard.html') || path.endsWith('/dashboard') || !!document.getElementById('workstationCardsGrid');
 
   if (isLoginPage) {
     if (window.Auth && window.Auth.isAuthenticated() && !window.location.search.includes('force=login')) {

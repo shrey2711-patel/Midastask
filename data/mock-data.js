@@ -256,9 +256,132 @@ function broadcastSync(eventType, payload) {
   }
 }
 
-// Helper methods to read/write from localStorage
+function resolveApiBase() {
+  if (typeof window === 'undefined') return '';
+  const host = window.location.hostname || '';
+  const port = window.location.port || '';
+  // Use same-origin relative API when hosted on Cloudflare Workers / Pages or local Wrangler dev (8787)
+  if (host.endsWith('.workers.dev') || host.endsWith('.pages.dev') || port === '8787') {
+    return '';
+  }
+  return 'https://midastask.shreypatel00557.workers.dev';
+}
+
+const API_BASE = resolveApiBase();
+
+// Helper methods to read/write from localStorage + Cloud Sync
 const DataStore = {
   syncChannel,
+  API_BASE,
+  clockOffsetMs: 0,
+  lastCloudHash: '',
+  isCloudConnected: false,
+  _listeners: [],
+
+  onCloudSync(callback) {
+    if (typeof callback === 'function') {
+      this._listeners.push(callback);
+    }
+  },
+
+  _notifyCloudListeners(reason) {
+    this._listeners.forEach(fn => {
+      try { fn(reason); } catch (e) { /* ignore */ }
+    });
+  },
+
+  async syncFromCloud(deviceId = 'ALL') {
+    try {
+      const res = await fetch(`${API_BASE}/api/state?deviceId=${encodeURIComponent(deviceId)}&_t=${Date.now()}`, {
+        method: 'GET',
+        cache: 'no-store'
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data || !data.ok) return false;
+
+      if (typeof data.serverTime === 'number') {
+        this.clockOffsetMs = data.serverTime - Date.now();
+      }
+      this.isCloudConnected = true;
+
+      let changed = false;
+
+      if (Array.isArray(data.devices) && data.devices.length > 0) {
+        const nextDevJson = JSON.stringify(data.devices);
+        if (localStorage.getItem(STORAGE_KEYS.DEVICES) !== nextDevJson) {
+          localStorage.setItem(STORAGE_KEYS.DEVICES, nextDevJson);
+          changed = true;
+        }
+      }
+
+      if (Array.isArray(data.tasks)) {
+        if (deviceId === 'ALL') {
+          const nextTasksJson = JSON.stringify(data.tasks);
+          if (localStorage.getItem(STORAGE_KEYS.TASKS) !== nextTasksJson) {
+            localStorage.setItem(STORAGE_KEYS.TASKS, nextTasksJson);
+            changed = true;
+          }
+        } else {
+          // Merge device-specific tasks into local cache
+          const current = this.getNotes().filter(n => n.deviceId !== deviceId);
+          const merged = [...data.tasks, ...current];
+          const nextTasksJson = JSON.stringify(merged);
+          if (localStorage.getItem(STORAGE_KEYS.TASKS) !== nextTasksJson) {
+            localStorage.setItem(STORAGE_KEYS.TASKS, nextTasksJson);
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        broadcastSync('CLOUD_SYNC', { deviceId });
+        this._notifyCloudListeners('cloud-sync');
+      }
+      return true;
+    } catch (err) {
+      this.isCloudConnected = false;
+      return false;
+    }
+  },
+
+  async sendHeartbeat(deviceId, isPoweredOn = true) {
+    if (!deviceId) return false;
+    try {
+      const res = await fetch(`${API_BASE}/api/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId,
+          isPoweredOn,
+          hostname: typeof navigator !== 'undefined' ? (navigator.platform || 'WebClient') : 'WebClient'
+        })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (data && data.ok && data.device) {
+        const devices = this.getDevices();
+        const idx = devices.findIndex(d => d.id === data.device.id);
+        if (idx !== -1) {
+          devices[idx] = data.device;
+          this.setDevices(devices);
+        }
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  sendOfflineBeacon(deviceId) {
+    if (!deviceId || typeof navigator === 'undefined' || !navigator.sendBeacon) return;
+    try {
+      const blob = new Blob([JSON.stringify({ deviceId, isPoweredOn: false })], {
+        type: 'application/json'
+      });
+      navigator.sendBeacon(`${API_BASE}/api/heartbeat`, blob);
+    } catch (e) { /* ignore */ }
+  },
 
   getNotes() {
     const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
@@ -316,15 +439,16 @@ const DataStore = {
     const dev = devices.find(d => d.id === deviceId);
     if (!dev) return null;
 
-    const now = Date.now();
-    const lastPing = dev.lastPingTime || now;
-    const isOnline = dev.isPoweredOn !== false && (now - lastPing) < (15 * 60 * 1000);
+    const now = Date.now() + (this.clockOffsetMs || 0);
+    const lastPing = dev.lastPingTime || 0;
+    // Laptop is considered online if powered on AND pinged within last 2 minutes
+    const isOnline = dev.isPoweredOn !== false && lastPing > 0 && (now - lastPing) < (2 * 60 * 1000);
 
     // 1. If PC is powered off / offline (inactive)
     if (!isOnline) {
-      const mins = Math.max(1, Math.floor((now - lastPing) / 60000));
+      const mins = lastPing > 0 ? Math.max(1, Math.floor((now - lastPing) / 60000)) : 999;
       const hours = Math.floor(mins / 60);
-      const timeStr = hours > 0 ? `${hours}h ago` : `${mins}m ago`;
+      const timeStr = lastPing <= 0 ? 'never' : (hours > 0 ? `${hours}h ago` : `${mins}m ago`);
       return {
         deviceId,
         status: 'offline',
@@ -388,51 +512,30 @@ const DataStore = {
   },
 
   cycleDeviceStatus(deviceId) {
-    const devices = this.getDevices();
-    const dev = devices.find(d => d.id === deviceId);
-    if (!dev) return;
-
-    const notes = this.getNotes();
-    const pendingForDev = notes.filter(n => n.deviceId === deviceId && !n.completed);
-    const currentAnalysis = this.autoAnalyzeDevice(deviceId);
-
-    if (currentAnalysis.rgbColor === 'green') {
-      // Simulate: Stuck in task (> 45m elapsed)
-      dev.isPoweredOn = true;
-      dev.lastPingTime = Date.now();
-      if (pendingForDev.length > 0) {
-        pendingForDev[0].startedAt = Date.now() - (55 * 60 * 1000); // 55 mins ago!
-        this.setNotes(notes);
-      }
-    } else if (currentAnalysis.rgbColor === 'yellow') {
-      // Simulate: PC Powered Off (Inactive)
-      dev.isPoweredOn = false;
-      dev.lastPingTime = Date.now() - (4 * 3600 * 1000); // 4 hours ago
-    } else {
-      // Simulate: Back to Normal / Good
-      dev.isPoweredOn = true;
-      dev.lastPingTime = Date.now();
-      if (pendingForDev.length > 0) {
-        pendingForDev[0].startedAt = Date.now() - (5 * 60 * 1000); // 5 mins ago
-        this.setNotes(notes);
-      }
-    }
-
-    this.setDevices(devices);
+    // Disabled: Status is driven strictly by real-time laptop heartbeats & task timestamps.
     return this.autoAnalyzeDevice(deviceId);
   },
 
   addNote(note) {
     const notes = this.getNotes();
+    const now = Date.now();
     const newNote = {
-      id: 'note-' + Date.now(),
+      id: 'note-' + now + '-' + Math.floor(Math.random() * 1000),
       completed: false,
-      createdAt: new Date().toISOString(),
+      startedAt: now,
+      createdAt: new Date(now).toISOString(),
       timeframe: 'This Month',
       ...note
     };
     notes.unshift(newNote);
     this.setNotes(notes);
+
+    fetch(`${API_BASE}/api/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newNote)
+    }).then(() => this.syncFromCloud()).catch(() => {});
+
     return newNote;
   },
 
@@ -442,6 +545,13 @@ const DataStore = {
     if (index !== -1) {
       notes[index] = { ...notes[index], ...updates };
       this.setNotes(notes);
+
+      fetch(`${API_BASE}/api/tasks/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      }).then(() => this.syncFromCloud()).catch(() => {});
+
       return notes[index];
     }
     return null;
@@ -452,7 +562,16 @@ const DataStore = {
     const note = notes.find(n => n.id === id);
     if (note) {
       note.completed = !note.completed;
+      if (!note.completed) {
+        note.startedAt = Date.now();
+      }
       this.setNotes(notes);
+
+      fetch(`${API_BASE}/api/tasks/${encodeURIComponent(id)}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }).then(() => this.syncFromCloud()).catch(() => {});
+
       return note;
     }
     return null;
@@ -461,6 +580,10 @@ const DataStore = {
   deleteNote(id) {
     const notes = this.getNotes().filter(n => n.id !== id);
     this.setNotes(notes);
+
+    fetch(`${API_BASE}/api/tasks/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    }).then(() => this.syncFromCloud()).catch(() => {});
   },
 
   resetDefaults() {

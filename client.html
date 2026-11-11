@@ -106,7 +106,10 @@
           <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <span>Managed remotely by Admin</span>
         </span>
-        <a href="dashboard.html" class="text-blue-600 hover:underline font-medium">Admin Panel &rarr;</a>
+        <div class="flex items-center gap-3">
+          <a href="widget.html" class="text-gray-600 hover:text-black font-medium underline">Desktop Widget</a>
+          <a href="dashboard.html" class="text-blue-600 hover:underline font-medium">Admin Panel &rarr;</a>
+        </div>
       </div>
 
     </div>
@@ -116,22 +119,32 @@
   <!-- Scripts -->
   <script src="data/mock-data.js"></script>
   <script>
-    // Client Checklist Controller
+    // Client Checklist Controller (Cloud-Synced across any WiFi / location)
     let currentDevice = 'OFFICE-PC-01';
 
     function initClient() {
-      // 1. Check URL parameters (e.g. client.html?device=OFFICE-PC-02)
+      // 1. Check URL parameters or saved laptop preference
       const urlParams = new URLSearchParams(window.location.search);
       const devParam = urlParams.get('device');
+      const savedDevice = localStorage.getItem('midastask_client_device');
+
       if (devParam && ['OFFICE-PC-01', 'OFFICE-PC-02', 'OFFICE-PC-03'].includes(devParam.toUpperCase())) {
         currentDevice = devParam.toUpperCase();
+        localStorage.setItem('midastask_client_device', currentDevice);
+      } else if (savedDevice && ['OFFICE-PC-01', 'OFFICE-PC-02', 'OFFICE-PC-03'].includes(savedDevice)) {
+        currentDevice = savedDevice;
       }
 
       const selectEl = document.getElementById('deviceSelectPill');
       if (selectEl) {
         selectEl.value = currentDevice;
         selectEl.onchange = (e) => {
+          const prevDevice = currentDevice;
           currentDevice = e.target.value;
+          localStorage.setItem('midastask_client_device', currentDevice);
+          window.DataStore.sendHeartbeat(prevDevice, false);
+          window.DataStore.sendHeartbeat(currentDevice, true);
+          window.DataStore.syncFromCloud(currentDevice);
           renderClientList();
         };
       }
@@ -139,14 +152,33 @@
       renderClientList();
       setupLiveSync();
 
-      // Continuous auto-analysis timer on client
+      // Send immediate online heartbeat + repeat every 20s from any internet connection
+      window.DataStore.sendHeartbeat(currentDevice, true);
+      window.DataStore.syncFromCloud(currentDevice);
+
+      setInterval(() => {
+        window.DataStore.sendHeartbeat(currentDevice, true);
+      }, 20000);
+
+      // Pull task updates every 4s from Cloudflare
+      setInterval(() => {
+        window.DataStore.syncFromCloud(currentDevice);
+      }, 4000);
+
+      // Re-evaluate stuck timers locally every 4s
       setInterval(() => {
         renderClientList();
       }, 4000);
+
+      // Mark workstation offline cleanly if tab/widget window closes
+      window.addEventListener('pagehide', () => {
+        window.DataStore.sendOfflineBeacon(currentDevice);
+      });
     }
 
     function renderClientList() {
       const container = document.getElementById('clientChecklistContainer');
+      const prevScroll = container ? container.scrollTop : 0;
       const progressEl = document.getElementById('clientNotesProgress');
       const deptEl = document.getElementById('clientDepartment');
       const circleEl = document.getElementById('clientCircleNumber');
@@ -155,7 +187,7 @@
       const devices = window.DataStore.getDevices();
       const dev = devices.find(d => d.id === currentDevice) || devices[0];
       if (deptEl) deptEl.textContent = `${dev.user} • ${dev.department}`;
-      if (circleEl) circleEl.textContent = currentDevice.split('-')[2] || '1';
+      if (circleEl) circleEl.textContent = String(parseInt(currentDevice.split('-')[2], 10) || 1);
 
       // Auto-analyze workstation performance by time & heartbeat
       const analysis = window.DataStore.autoAnalyzeDevice(currentDevice);
@@ -235,6 +267,7 @@
         </div>
       `;
       }).join('');
+      container.scrollTop = prevScroll;
     }
 
     function toggleClientNote(noteId) {
@@ -252,15 +285,21 @@
     }
 
     function setupLiveSync() {
-      // Listen to cross-tab updates (when Admin adds, edits, or deletes tasks)
+      // Listen to cross-tab & cloud sync updates
       if (window.DataStore && window.DataStore.syncChannel) {
         window.DataStore.syncChannel.onmessage = () => {
           renderClientList();
         };
       }
 
+      if (window.DataStore && window.DataStore.onCloudSync) {
+        window.DataStore.onCloudSync(() => {
+          renderClientList();
+        });
+      }
+
       window.addEventListener('storage', (e) => {
-        if (e.key === 'midastask_notes_list') {
+        if (e.key === 'midastask_notes_list' || e.key === 'midastask_active_users') {
           renderClientList();
         }
       });

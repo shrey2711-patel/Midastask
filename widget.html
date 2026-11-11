@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Midas Task – Install Laptop Desktop Widget</title>
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-white min-h-screen flex flex-col justify-between selection:bg-black selection:text-white">
+
+  <main class="w-full max-w-3xl mx-auto px-6 py-10 sm:py-14 flex-1">
+
+    <div class="flex items-center justify-between mb-10">
+      <div>
+        <h1 class="text-3xl sm:text-4xl font-black text-black tracking-tight leading-[1.08] uppercase">
+          MIDAS TASK<br>DESKTOP WIDGET
+        </h1>
+        <p class="text-xs text-gray-500 mt-2">
+          Cloud-synced across any WiFi, hotspot, or city &bull; No same network required
+        </p>
+      </div>
+      <a href="dashboard.html" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-full transition-colors">
+        &larr; Admin Dashboard
+      </a>
+    </div>
+
+    <!-- Step 1: 1-Click Windows Widget Installer -->
+    <section class="bg-gray-50 p-6 sm:p-8 mb-8">
+      <div class="card-rgb-line line-green"></div>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">Windows 10 / 11 Native Desktop Widget</p>
+          <h2 class="text-2xl font-black text-black tracking-tight">Install on Your Laptops</h2>
+          <p class="text-sm text-gray-600 mt-1.5">
+            Shows each laptop's checklist directly on its Windows desktop, auto-starts on boot, and updates Admin Dashboard live (Green / Yellow / Red) from anywhere. Works with Windows Smart App Control enabled!
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="widget/Install-MidasWidget.bat" download="Install-MidasWidget.bat" class="px-5 py-3 bg-black hover:bg-gray-800 text-white text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-2">
+          <span>Download 1-Click Installer (.bat)</span>
+        </a>
+        <a href="widget/MidasTaskWidget.ps1" download="MidasTaskWidget.ps1" class="px-5 py-3 bg-white hover:bg-gray-100 text-black border border-gray-300 text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-2">
+          <span>Download Widget Script (.ps1)</span>
+        </a>
+      </div>
+
+      <div class="mt-5 text-xs text-gray-500 space-y-1">
+        <p><strong>How to install on each laptop (at any location):</strong></p>
+        <p>1. Open <code class="bg-white px-1.5 py-0.5 text-black">midastask.shreypatel00557.workers.dev/widget.html</code> on the laptop.</p>
+        <p>2. Download &amp; double-click <strong>Install-MidasWidget.bat</strong> (click <em>More info &rarr; Run anyway</em> if SmartScreen asks once).</p>
+        <p>3. Enter <strong>1</strong> (Main HP Laptop), <strong>2</strong> (Grey Laptop), or <strong>3</strong> (Ghanshyam's Laptop). Done!</p>
+      </div>
+    </section>
+
+    <!-- Step 2: Direct Web / Edge / Chrome App Widget Links per Laptop -->
+    <section class="bg-gray-50 p-6 sm:p-8">
+      <p class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Or Pin as Edge / Chrome App Widget</p>
+      <h3 class="text-lg font-bold text-black mb-4">Quick Links per Laptop (Zero Install)</h3>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <a href="client.html?device=OFFICE-PC-01" class="block bg-white p-4 hover:bg-gray-100 transition-colors">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase text-black">Main HP Laptop</span>
+            <span class="w-6 h-6 rounded-full bg-[#10B981] text-white text-xs font-bold flex items-center justify-center">1</span>
+          </div>
+          <p class="text-[11px] text-gray-500">Workstation 1 Checklist &rarr;</p>
+        </a>
+
+        <a href="client.html?device=OFFICE-PC-02" class="block bg-white p-4 hover:bg-gray-100 transition-colors">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase text-black">Grey Laptop</span>
+            <span class="w-6 h-6 rounded-full bg-[#F59E0B] text-white text-xs font-bold flex items-center justify-center">2</span>
+          </div>
+          <p class="text-[11px] text-gray-500">Workstation 2 Checklist &rarr;</p>
+        </a>
+
+        <a href="client.html?device=OFFICE-PC-03" class="block bg-white p-4 hover:bg-gray-100 transition-colors">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase text-black">Ghanshyam's Laptop</span>
+            <span class="w-6 h-6 rounded-full bg-[#EF4444] text-white text-xs font-bold flex items-center justify-center">3</span>
+          </div>
+          <p class="text-[11px] text-gray-500">Workstation 3 Checklist &rarr;</p>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="py-6 text-center text-xs text-gray-400 border-t border-gray-50">
+    <span>MIDAS TASK MANAGEMENT &bull; Cloud Edge Sync Enabled</span>
+  </footer>
+
+</body>
+</html>
