@@ -8,6 +8,7 @@ $ErrorActionPreference = "SilentlyContinue"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Web.Extensions
+Add-Type -AssemblyName System.Net.Http
 Add-Type -AssemblyName Microsoft.VisualBasic
 
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -559,6 +560,15 @@ function Update-StatusVisuals {
     Update-TrayIcon
 }
 
+$script:HttpClient = New-Object System.Net.Http.HttpClient
+$script:HttpClient.Timeout = [TimeSpan]::FromSeconds(10)
+$script:HttpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MidasTaskWidget/1.0") | Out-Null
+$script:AsyncJobs = New-Object System.Collections.ArrayList
+
+function Enqueue-HttpJob($netTask, $onDone) {
+    [void]$script:AsyncJobs.Add(@{ task = $netTask; onDone = $onDone })
+}
+
 function Toggle-TaskOptimistic($item) {
     $item["completed"] = -not [bool]$item["completed"]
     if (-not [bool]$item["completed"]) {
@@ -567,14 +577,13 @@ function Toggle-TaskOptimistic($item) {
     Save-Cache
     Render-All
 
-    $wc = New-Object System.Net.WebClient
-    $wc.Encoding = [System.Text.Encoding]::UTF8
-    $wc.Headers.Add("Content-Type", "application/json")
     $idCapture = [string]$item["id"]
     $compCapture = [bool]$item["completed"]
-    $wc.add_UploadStringCompleted({
-        param($s, $e)
-        if ($null -ne $e.Error) {
+    $content = New-Object System.Net.Http.StringContent("{}", [System.Text.Encoding]::UTF8, "application/json")
+    $reqTask = $script:HttpClient.PostAsync("$($script:Config.ApiBase)/api/tasks/$([Uri]::EscapeDataString($idCapture))/toggle", $content)
+    Enqueue-HttpJob $reqTask ({
+        param($ok, $body)
+        if (-not $ok) {
             [void]$script:OfflineQueue.Add(@{ id = $idCapture; completed = $compCapture })
             Save-Cache
             Update-StatusVisuals
@@ -582,7 +591,6 @@ function Toggle-TaskOptimistic($item) {
             Trigger-CloudSync
         }
     }.GetNewClosure())
-    $wc.UploadStringAsync((New-Object Uri("$($script:Config.ApiBase)/api/tasks/$([Uri]::EscapeDataString($idCapture))/toggle")), "POST", "{}")
 }
 
 function Render-All {
@@ -711,6 +719,7 @@ function Send-HeartbeatSync([string]$devId, [bool]$online) {
         $req = [System.Net.HttpWebRequest]::Create("$($script:Config.ApiBase)/api/heartbeat")
         $req.Method = "POST"
         $req.ContentType = "application/json"
+        $req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MidasTaskWidget/1.0"
         $req.Timeout = 2500
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($script:Json.Serialize(@{
             deviceId    = $devId
@@ -729,31 +738,31 @@ function Send-HeartbeatSync([string]$devId, [bool]$online) {
 function Send-HeartbeatAsync([bool]$online) {
     if ($script:Exiting) { return }
     try {
-        $wc = New-Object System.Net.WebClient
-        $wc.Encoding = [System.Text.Encoding]::UTF8
-        $wc.Headers.Add("Content-Type", "application/json")
         $body = $script:Json.Serialize(@{
             deviceId    = $script:Config.DeviceId
             isPoweredOn = $online
             hostname    = $env:COMPUTERNAME
         })
-        $wc.UploadStringAsync((New-Object Uri("$($script:Config.ApiBase)/api/heartbeat")), "POST", $body)
+        $content = New-Object System.Net.Http.StringContent($body, [System.Text.Encoding]::UTF8, "application/json")
+        $reqTask = $script:HttpClient.PostAsync("$($script:Config.ApiBase)/api/heartbeat", $content)
+        Enqueue-HttpJob $reqTask $null
     } catch {}
 }
 
 function Pull-StateAsync {
-    $wc = New-Object System.Net.WebClient
-    $wc.Encoding = [System.Text.Encoding]::UTF8
-    $wc.add_DownloadStringCompleted({
-        param($s, $e)
+    $ts = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    $uri = "$($script:Config.ApiBase)/api/state?deviceId=$([Uri]::EscapeDataString($script:Config.DeviceId))&_t=$ts"
+    $reqTask = $script:HttpClient.GetAsync($uri)
+    Enqueue-HttpJob $reqTask {
+        param($ok, $rawBody)
         $script:SyncInFlight = $false
-        if ($null -ne $e.Error -or [string]::IsNullOrWhiteSpace($e.Result)) {
+        if (-not $ok -or [string]::IsNullOrWhiteSpace($rawBody)) {
             $script:CloudOnline = $false
             Update-StatusVisuals
             return
         }
         try {
-            $data = $script:Json.DeserializeObject($e.Result)
+            $data = $script:Json.DeserializeObject($rawBody)
             if ($data -and [bool]$data["ok"]) {
                 if ($data.ContainsKey("serverTime")) {
                     $script:ClockOffsetMs = [int64]$data["serverTime"] - [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
@@ -775,10 +784,7 @@ function Pull-StateAsync {
             $script:CloudOnline = $false
             Update-StatusVisuals
         }
-    })
-    $ts = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-    $uri = "$($script:Config.ApiBase)/api/state?deviceId=$([Uri]::EscapeDataString($script:Config.DeviceId))&_t=$ts"
-    $wc.DownloadStringAsync((New-Object Uri($uri)))
+    }
 }
 
 function Trigger-CloudSync {
@@ -786,19 +792,17 @@ function Trigger-CloudSync {
     $script:SyncInFlight = $true
 
     if ($script:OfflineQueue.Count -gt 0) {
-        $wc = New-Object System.Net.WebClient
-        $wc.Encoding = [System.Text.Encoding]::UTF8
-        $wc.Headers.Add("Content-Type", "application/json")
         $payload = $script:Json.Serialize(@{
             deviceId = $script:Config.DeviceId
             actions  = @($script:OfflineQueue)
         })
-        $wc.add_UploadStringCompleted({
-            param($s, $e)
-            if ($null -eq $e.Error) { $script:OfflineQueue.Clear(); Save-Cache }
+        $content = New-Object System.Net.Http.StringContent($payload, [System.Text.Encoding]::UTF8, "application/json")
+        $reqTask = $script:HttpClient.PostAsync("$($script:Config.ApiBase)/api/sync-batch", $content)
+        Enqueue-HttpJob $reqTask {
+            param($ok, $rawBody)
+            if ($ok) { $script:OfflineQueue.Clear(); Save-Cache }
             Pull-StateAsync
-        })
-        $wc.UploadStringAsync((New-Object Uri("$($script:Config.ApiBase)/api/sync-batch")), "POST", $payload)
+        }
     } else {
         Pull-StateAsync
     }
@@ -806,7 +810,7 @@ function Trigger-CloudSync {
 
 function Exit-Cleanly {
     $script:Exiting = $true
-    try { $syncTimer.Stop(); $hbTimer.Stop(); $uiTimer.Stop() } catch {}
+    try { $jobTimer.Stop(); $syncTimer.Stop(); $hbTimer.Stop(); $uiTimer.Stop() } catch {}
     Send-HeartbeatSync $script:Config.DeviceId $false
     $trayIcon.Visible = $false
     [System.Windows.Forms.Application]::Exit()
@@ -831,6 +835,34 @@ $form.Add_FormClosing({
 Apply-AutoStart ([bool]$script:Config.AutoStart)
 Load-Cache
 Render-All
+
+$jobTimer = New-Object System.Windows.Forms.Timer
+$jobTimer.Interval = 80
+$jobTimer.Add_Tick({
+    if ($script:AsyncJobs.Count -eq 0) { return }
+    for ($i = $script:AsyncJobs.Count - 1; $i -ge 0; $i--) {
+        $job = $script:AsyncJobs[$i]
+        $t = $job["task"]
+        if ($t.IsCompleted) {
+            $script:AsyncJobs.RemoveAt($i)
+            $ok = $false
+            $body = ""
+            try {
+                if (-not $t.IsFaulted -and -not $t.IsCanceled -and $null -ne $t.Result) {
+                    $resp = $t.Result
+                    $ok = $resp.IsSuccessStatusCode
+                    $body = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                }
+            } catch {
+                $ok = $false
+            }
+            if ($null -ne $job["onDone"]) {
+                & $job["onDone"] $ok $body
+            }
+        }
+    }
+})
+$jobTimer.Start()
 
 $syncTimer = New-Object System.Windows.Forms.Timer
 $syncTimer.Interval = 5000
